@@ -203,7 +203,4 @@ def run_env(render=False, headless=False):
 
 
 if __name__ == '__main__':
-    print("hello, I am testing")
-    #run_env(render=True, headless=True)
-    run_env(render=False, headless=True)
-    #run_env(render=True, headless=False)
+    run_env(render=True, headless=False)
