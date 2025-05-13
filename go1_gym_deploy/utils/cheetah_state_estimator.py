@@ -272,20 +272,31 @@ class StateEstimator:
 
     def _imu_cb(self, channel, data):
         # print("update imu")
+        # 解码接收到的 LCM 数据，获取 IMU 状态估计消息
         msg = state_estimator_lcmt.decode(data)
 
+        # 当前欧拉角（roll, pitch, yaw），表示机器人的姿态
         self.euler = np.array(msg.rpy)
 
+        # 根据当前欧拉角计算旋转矩阵 R，用于坐标变换
         self.R = get_rotation_matrix_from_rpy(self.euler)
 
+        # 接触状态估计：contact_estimate > 200 判定为接触，结果为 float 类型数组（如 [1.0, 0.0, 1.0, 1.0]）
         self.contact_state = 1.0 * (np.array(msg.contact_estimate) > 200)
 
+        # 保存当前帧与上一帧欧拉角之差，用于计算角速度等
         self.deuler_history[self.buf_idx % self.smoothing_length, :] = msg.rpy - self.euler_prev
+
+        # 记录当前帧与上一帧之间的时间间隔
         self.dt_history[self.buf_idx % self.smoothing_length] = time.time() - self.timuprev
 
+        # 更新上一帧的时间戳
         self.timuprev = time.time()
 
+        # 环形缓冲区索引增加，确保历史数据更新
         self.buf_idx += 1
+
+        # 保存当前欧拉角为下一帧对比之用
         self.euler_prev = np.array(msg.rpy)
 
     def _sensor_cb(self, channel, data):

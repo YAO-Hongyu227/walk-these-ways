@@ -18,28 +18,31 @@ def train_go1(headless=True):
 
     config_go1(Cfg)
 
-    Cfg.commands.num_lin_vel_bins = 30
-    Cfg.commands.num_ang_vel_bins = 30
-    Cfg.curriculum_thresholds.tracking_ang_vel = 0.7
-    Cfg.curriculum_thresholds.tracking_lin_vel = 0.8
-    Cfg.curriculum_thresholds.tracking_contacts_shaped_vel = 0.90
-    Cfg.curriculum_thresholds.tracking_contacts_shaped_force = 0.90
+    Cfg.commands.num_lin_vel_bins = 30                                      #线性速度命令的离散化箱数，用于将连续的线性速度命令空间分成30个离散区间
+    Cfg.commands.num_ang_vel_bins = 30                                      #角速度命令的离散化箱数，用于将连续的角速度命令空间分成30个离散区间
+    Cfg.curriculum_thresholds.tracking_ang_vel = 0.7                        #角速度跟踪性能的课程学习阈值，当性能达到0.7时，会增加任务难度
+    Cfg.curriculum_thresholds.tracking_lin_vel = 0.8                        #线性速度跟踪性能的课程学习阈值，当性能达到0.8时，会增加任务难度
+    Cfg.curriculum_thresholds.tracking_contacts_shaped_vel = 0.90           #接触速度跟踪性能的课程学习阈值，接触 tracking（机器人腿与地面的接触匹配度），速度 tracking（如身体线速度匹配目标速度），shaped reward（有形奖励函数，比如不是稀疏奖励，而是连续奖励
+    Cfg.curriculum_thresholds.tracking_contacts_shaped_force = 0.90         #接触力跟踪性能的课程学习阈值
 
-    Cfg.commands.distributional_commands = True
+    Cfg.commands.distributional_commands = True                             #启用分布式命令（distributional commands）模式，使得每次训练中机器人的目标命令（如速度、转向）不再是固定值，而是从设定好的分布中「随机采样」。
 
-    Cfg.domain_rand.lag_timesteps = 6
-    Cfg.domain_rand.randomize_lag_timesteps = True
-    Cfg.control.control_type = "actuator_net"
+    Cfg.domain_rand.lag_timesteps = 6                                       #模拟控制延迟的时间步数，设置为6个时间步 
+    Cfg.domain_rand.randomize_lag_timesteps = True                          #启用控制延迟的随机化，使延迟时间在训练中变化
+    Cfg.control.control_type = "actuator_net"                               #设置控制器类型为"actuator_net"，这是一种基于神经网络的执行器模型
 
-    Cfg.domain_rand.randomize_rigids_after_start = False
-    Cfg.env.priv_observe_motion = False
-    Cfg.env.priv_observe_gravity_transformed_motion = False
-    Cfg.domain_rand.randomize_friction_indep = False
-    Cfg.env.priv_observe_friction_indep = False
+    Cfg.domain_rand.randomize_rigids_after_start = False                    #禁用在模拟开始后随机化刚体参数
+    Cfg.env.priv_observe_motion = False                                     #禁用将运动信息作为特权观察的一部分
+    Cfg.env.priv_observe_gravity_transformed_motion = False                 #禁用将重力变换后的运动信息作为特权观察的一部分
+    Cfg.domain_rand.randomize_friction_indep = False                        #禁用独立摩擦系数随机化（每个接触点独立随机化）
+    Cfg.env.priv_observe_friction_indep = False                             #禁用将独立摩擦系数作为特权观察的一部分
+    
     Cfg.domain_rand.randomize_friction = True
     Cfg.env.priv_observe_friction = True
     Cfg.domain_rand.friction_range = [0.1, 3.0]
-    Cfg.domain_rand.randomize_restitution = True
+
+    Cfg.domain_rand.randomize_restitution = True                            #启用弹性系数随机化，使环境中的弹性系数在训练中变化
+
     Cfg.env.priv_observe_restitution = True
     Cfg.domain_rand.restitution_range = [0.0, 0.4]
     Cfg.domain_rand.randomize_base_mass = True
@@ -89,8 +92,8 @@ def train_go1(headless=True):
     Cfg.env.observe_timing_parameter = False
     Cfg.env.observe_clock_inputs = True
 
-    Cfg.domain_rand.tile_height_range = [-0.0, 0.0]
-    Cfg.domain_rand.tile_height_curriculum = False
+    Cfg.domain_rand.tile_height_range = [-0.0, 0.0]                             #表示地形的 tile（瓦片）高度变化范围。   [-0.0, 0.0] 意味着 不引入地形高度的随机性，即所有地形平坦。
+    Cfg.domain_rand.tile_height_curriculum = False                              #是否启用地形高度的课程学习（curriculum learning）。    设置为 False 表示 不会随着训练进度逐步增加地形难度。
     Cfg.domain_rand.tile_height_update_interval = 1000000
     Cfg.domain_rand.tile_height_curriculum_step = 0.01
     Cfg.terrain.border_size = 0.0
@@ -110,6 +113,8 @@ def train_go1(headless=True):
     Cfg.terrain.center_robots = True
     Cfg.terrain.center_span = 4
     Cfg.terrain.horizontal_scale = 0.10
+
+
     Cfg.rewards.use_terminal_foot_height = False
     Cfg.rewards.use_terminal_body_height = True
     Cfg.rewards.terminal_body_height = 0.05
@@ -153,9 +158,9 @@ def train_go1(headless=True):
     Cfg.rewards.sigma_rew_neg = 0.02
 
 
-
-    Cfg.commands.lin_vel_x = [-1.0, 1.0]
-    Cfg.commands.lin_vel_y = [-0.6, 0.6]
+    #robot is trained to follow target velocities and gait parameters
+    Cfg.commands.lin_vel_x = [-1.0, 1.0]                          #Linear Velocity X
+    Cfg.commands.lin_vel_y = [-0.6, 0.6]                          #Linear Velocity Y
     Cfg.commands.ang_vel_yaw = [-1.0, 1.0]
     Cfg.commands.body_height_cmd = [-0.25, 0.15]
     Cfg.commands.gait_frequency_cmd_range = [2.0, 4.0]
