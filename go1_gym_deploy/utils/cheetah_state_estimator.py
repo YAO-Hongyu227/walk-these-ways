@@ -107,9 +107,18 @@ class StateEstimator:
         self.init_time = time.time()
         self.received_first_legdata = False
 
+        # 订阅 IMU 状态估计器发送的数据（例如陀螺仪、角度等）
+        # 一旦收到来自 "state_estimator_data" 频道的数据，就调用回调函数 _imu_cb 进行处理
         self.imu_subscription = self.lc.subscribe("state_estimator_data", self._imu_cb)
+
+        # 订阅腿部控制器发送的数据（如电机状态、位置、速度等）
+        # 数据到达时将由 _legdata_cb 回调函数进行解析和处理
         self.legdata_state_subscription = self.lc.subscribe("leg_control_data", self._legdata_cb)
+
+        # 订阅遥控器输入数据（例如操控命令）
+        # 数据接收后由 _rc_command_cb 回调函数处理遥控器指令
         self.rc_command_subscription = self.lc.subscribe("rc_command", self._rc_command_cb)
+
 
         if use_cameras:
             for cam_id in [1, 2, 3, 4, 5]:
@@ -127,17 +136,38 @@ class StateEstimator:
         self.body_quat = np.array([0, 0, 0, 1])
 
     def get_body_linear_vel(self):
+        # 将世界坐标系下的线速度转换为机体坐标系下的速度
+        # self.R 是从机体坐标系到世界坐标系的旋转矩阵
+        # self.R.T 是其转置矩阵，相当于从世界坐标系变换回机体坐标系
+        # self.world_lin_vel 是世界坐标系下的线速度
         self.body_lin_vel = np.dot(self.R.T, self.world_lin_vel)
+
+        # 返回机体坐标系下的线速度
         return self.body_lin_vel
 
-    def get_body_angular_vel(self):
-        self.body_ang_vel = self.smoothing_ratio * np.mean(self.deuler_history / self.dt_history, axis=0) + (
-                    1 - self.smoothing_ratio) * self.body_ang_vel
+    def get_body_ang_vel(self):
+        # 计算平均角速度（欧拉角变化率），deuler_history 是角度差分，dt_history 是时间差分
+        # np.mean(self.deuler_history / self.dt_history, axis=0) 表示在最近若干帧中的平均角速度
+        # self.smoothing_ratio 是平滑因子，值在 0 到 1 之间
+        # 使用指数加权移动平均（EMA）来平滑角速度，避免突变
+        self.body_ang_vel = (
+            self.smoothing_ratio * np.mean(self.deuler_history / self.dt_history, axis=0) + (1 - self.smoothing_ratio) * self.body_ang_vel)
+
+        # 返回平滑后的机体角速度（在机体坐标系下）
         return self.body_ang_vel
 
+
     def get_gravity_vector(self):
-        grav = np.dot(self.R.T, np.array([0, 0, -1]))
+        # 定义重力在世界坐标系中的方向向量（Z轴向下）
+        gravity_world = np.array([0, 0, -1])
+
+        # 使用姿态旋转矩阵 self.R（从机体坐标系到世界坐标系的旋转）
+        # 计算重力向量在机体坐标系下的表示
+        grav = np.dot(self.R.T, gravity_world)
+
+        # 返回机体坐标系下的重力向量
         return grav
+
 
     def get_contact_state(self):
         return self.contact_state[self.contact_idxs]
@@ -146,66 +176,73 @@ class StateEstimator:
         return self.euler
 
     def get_command(self):
+        # 左右手柄上的3种模式设置
         MODES_LEFT = ["body_height", "lat_vel", "stance_width"]
         MODES_RIGHT = ["step_frequency", "footswing_height", "body_pitch"]
 
+        # 如果左上按钮被按下，就切换左手控制模式（循环切换 0~2）
         if self.left_upper_switch_pressed:
             self.ctrlmode_left = (self.ctrlmode_left + 1) % 3
             self.left_upper_switch_pressed = False
+
+        # 如果右上按钮被按下，就切换右手控制模式（循环切换 0~2）
         if self.right_upper_switch_pressed:
             self.ctrlmode_right = (self.ctrlmode_right + 1) % 3
             self.right_upper_switch_pressed = False
 
+        # 获取当前模式所对应的功能名
         MODE_LEFT = MODES_LEFT[self.ctrlmode_left]
         MODE_RIGHT = MODES_RIGHT[self.ctrlmode_right]
 
-        # always in use
-        cmd_x = 1 * self.left_stick[1]
-        cmd_yaw = -1 * self.right_stick[0]
+        # === 通用指令（默认都会用）===
+        cmd_x = 1 * self.left_stick[1]      # 前进后退速度（左摇杆前后）
+        cmd_yaw = -1 * self.right_stick[0]  # 转向速度（右摇杆左右）
 
-        # default values
-        cmd_y = 0.  # -1 * self.left_stick[0]
-        cmd_height = 0.
-        cmd_footswing = 0.08
-        cmd_stance_width = 0.33
-        cmd_stance_length = 0.40
-        cmd_ori_pitch = 0.
-        cmd_ori_roll = 0.
-        cmd_freq = 3.0
+        # === 以下为默认值（若没控制就用这些）===
+        cmd_y = 0.                    # 横向速度
+        cmd_height = 0.              # 机体高度
+        cmd_footswing = 0.08         # 抬腿高度
+        cmd_stance_width = 0.33      # 双腿间距宽度
+        cmd_stance_length = 0.40     # 双腿前后间距
+        cmd_ori_pitch = 0.           # 俯仰角
+        cmd_ori_roll = 0.            # 横滚角
+        cmd_freq = 3.0               # 步态频率
 
-        # joystick commands
+        # === 左手模式控制（根据 MODE_LEFT 来决定左摇杆左右控制什么）===
         if MODE_LEFT == "body_height":
-            cmd_height = 0.3 * self.left_stick[0]
+            cmd_height = 0.3 * self.left_stick[0]  # 控制机体升降
         elif MODE_LEFT == "lat_vel":
-            cmd_y = 0.6 * self.left_stick[0]
+            cmd_y = 0.6 * self.left_stick[0]       # 控制横向移动速度
         elif MODE_LEFT == "stance_width":
-            cmd_stance_width = 0.275 + 0.175 * self.left_stick[0]
+            cmd_stance_width = 0.275 + 0.175 * self.left_stick[0]  # 控制双腿间距
+
+        # === 右手模式控制（根据 MODE_RIGHT 决定右摇杆上下控制什么）===
         if MODE_RIGHT == "step_frequency":
             min_freq = 2.0
             max_freq = 4.0
-            cmd_freq = (1 + self.right_stick[1]) / 2 * (max_freq - min_freq) + min_freq
+            cmd_freq = (1 + self.right_stick[1]) / 2 * (max_freq - min_freq) + min_freq  # 控制步频
         elif MODE_RIGHT == "footswing_height":
-            cmd_footswing = max(0, self.right_stick[1]) * 0.32 + 0.03
+            cmd_footswing = max(0, self.right_stick[1]) * 0.32 + 0.03                    # 控制抬腿高度
         elif MODE_RIGHT == "body_pitch":
-            cmd_ori_pitch = -0.4 * self.right_stick[1]
+            cmd_ori_pitch = -0.4 * self.right_stick[1]                                   # 控制身体前倾
 
-        # gait buttons
-        if self.mode == 0:
+        # === 不同步态模式下的参数设置（决定脚步相位）===
+        if self.mode == 0:  # 站立/对称步态
             self.cmd_phase = 0.5
             self.cmd_offset = 0.0
             self.cmd_bound = 0.0
             self.cmd_duration = 0.5
-        elif self.mode == 1:
+        elif self.mode == 1:  # pacing
             self.cmd_phase = 0.0
             self.cmd_offset = 0.0
             self.cmd_bound = 0.0
             self.cmd_duration = 0.5
-        elif self.mode == 2:
+        elif self.mode == 2:  # trotting
             self.cmd_phase = 0.0
             self.cmd_offset = 0.5
             self.cmd_bound = 0.0
             self.cmd_duration = 0.5
-        elif self.mode == 3:
+        elif self.mode == 3:  # bounding
             self.cmd_phase = 0.0
             self.cmd_offset = 0.0
             self.cmd_bound = 0.5
@@ -216,9 +253,16 @@ class StateEstimator:
             self.cmd_bound = 0.0
             self.cmd_duration = 0.5
 
-        return np.array([cmd_x, cmd_y, cmd_yaw, cmd_height, cmd_freq, self.cmd_phase, self.cmd_offset, self.cmd_bound,
-                         self.cmd_duration, cmd_footswing, cmd_ori_pitch, cmd_ori_roll, cmd_stance_width,
-                         cmd_stance_length, 0, 0, 0, 0, 0])
+        # === 返回一个统一格式的指令向量（输入到控制器）===
+        return np.array([
+            cmd_x, cmd_y, cmd_yaw,
+            cmd_height, cmd_freq,
+            self.cmd_phase, self.cmd_offset, self.cmd_bound, self.cmd_duration,
+            cmd_footswing, cmd_ori_pitch, cmd_ori_roll,
+            cmd_stance_width, cmd_stance_length,
+            0, 0, 0, 0, 0  # 多预留了5个空位
+        ])
+
 
     def get_buttons(self):
         return np.array([self.left_lower_left_switch, self.left_upper_switch, self.right_lower_right_switch, self.right_upper_switch])

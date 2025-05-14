@@ -55,18 +55,33 @@ def load_and_run_policy(label, experiment_name, max_vel=1.0, max_yaw_vel=1.0):
     deployment_runner.run(max_steps=max_steps, logging=True)
 
 def load_policy(logdir):
-    body = torch.jit.load(logdir + '/checkpoints/body_latest.jit')
+    # 加载策略网络的两个部分：body 和 adaptation module
+    body = torch.jit.load(logdir + '/checkpoints/body_latest.jit')  # 主策略网络
     import os
-    adaptation_module = torch.jit.load(logdir + '/checkpoints/adaptation_module_latest.jit')
+    adaptation_module = torch.jit.load(logdir + '/checkpoints/adaptation_module_latest.jit')  # 适应模块
 
+    # 返回一个可调用的策略函数 policy(obs, info)
     def policy(obs, info):
-        i = 0
-        latent = adaptation_module.forward(obs["obs_history"].to('cpu'))
-        action = body.forward(torch.cat((obs["obs_history"].to('cpu'), latent), dim=-1))
-        info['latent'] = latent
-        return action
+        i = 0  # 没用到，可以删
+        # 使用适应模块，根据观测历史 obs_history 生成一个 latent 向量
+        # 它是一个 隐藏状态（latent state），由 adaptation_module 网络根据 obs["obs_history"] 推理出来，包含了当前环境的动态特征，例如：
+            # 地形（平地、坡地、不平整地）
+            # 摩擦系数（滑不滑）
+            # 地面弹性/硬度
+            # 接触模式的变化
+            # 甚至是传感器延迟等
 
-    return policy
+        latent = adaptation_module.forward(obs["obs_history"].to('cpu'))
+
+        # 把观测历史和 latent 向量拼接，送入主策略网络 body 得到动作输出
+        action = body.forward(torch.cat((obs["obs_history"].to('cpu'), latent), dim=-1))
+
+        # 把 latent 存进 info 中，便于调试或分析
+        info['latent'] = latent
+        return action  # 返回动作
+
+    return policy  # 返回封装好的策略函数
+
 
 
 if __name__ == '__main__':
