@@ -146,15 +146,23 @@ class CoRLRewards:
                          dim=1)
 
     def _reward_orientation_control(self):
-        # Penalize non flat base orientation
+        # 惩罚非水平的机体姿态（即过度的俯仰和滚转）
+        
+        # 从环境的命令中提取俯仰（pitch）和滚转（roll）指令
         roll_pitch_commands = self.env.commands[:, 10:12]
-        quat_roll = quat_from_angle_axis(-roll_pitch_commands[:, 1],
-                                         torch.tensor([1, 0, 0], device=self.env.device, dtype=torch.float))
-        quat_pitch = quat_from_angle_axis(-roll_pitch_commands[:, 0],
-                                          torch.tensor([0, 1, 0], device=self.env.device, dtype=torch.float))
+        
+        # 根据滚转指令生成对应的四元数（绕 x 轴旋转）
+        quat_roll = quat_from_angle_axis( -roll_pitch_commands[:, 1], torch.tensor([1, 0, 0], device=self.env.device, dtype=torch.float))
+        
+        # 根据俯仰指令生成对应的四元数（绕 y 轴旋转）
+        quat_pitch = quat_from_angle_axis( -roll_pitch_commands[:, 0], torch.tensor([0, 1, 0], device=self.env.device, dtype=torch.float))
 
+        # 将滚转和俯仰的四元数相乘，得到期望的机体姿态四元数
         desired_base_quat = quat_mul(quat_roll, quat_pitch)
+        
+        # 将重力向量从世界坐标系转换到期望的机体坐标系中
         desired_projected_gravity = quat_rotate_inverse(desired_base_quat, self.env.gravity_vec)
+
 
         return torch.sum(torch.square(self.env.projected_gravity[:, :2] - desired_projected_gravity[:, :2]), dim=1)
 

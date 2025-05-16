@@ -66,6 +66,7 @@ def config_go1(Cnfg: Union[Cfg, Meta]):
 
     _.terrain_proportions = [0, 0, 0, 0, 0, 0, 0, 0, 1.0]
     _.curriculum = False
+    # _.curriculum = True
 
     _ = Cnfg.env
     _.num_observations = 42

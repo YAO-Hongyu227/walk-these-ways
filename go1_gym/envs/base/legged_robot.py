@@ -85,6 +85,10 @@ class LeggedRobot(BaseTask):
         self.obs_buf = torch.clip(self.obs_buf, -clip_obs, clip_obs)
         if self.privileged_obs_buf is not None:
             self.privileged_obs_buf = torch.clip(self.privileged_obs_buf, -clip_obs, clip_obs)
+        
+        #revised by hongyu, 05/15/2025, adding curriculums
+        # if self.cfg.terrain.curriculum:
+        #     self.extras['curriculum'] = {'terrain_level': torch.mean(self.terrain_levels[:self.num_train_envs].float()).item()}
         return self.obs_buf, self.privileged_obs_buf, self.rew_buf, self.reset_buf, self.extras
 
     def post_physics_step(self):
@@ -178,21 +182,36 @@ class LeggedRobot(BaseTask):
         self.episode_length_buf[env_ids] = 0
         self.reset_buf[env_ids] = 1
         # fill extras
+        # ========= 统计训练和评估环境的 episode 数据，并清零 ==========    
+
+        # 选出属于训练环境的 ID（编号小于 self.num_train_envs）
         train_env_ids = env_ids[env_ids < self.num_train_envs]
+
         if len(train_env_ids) > 0:
-            self.extras["train/episode"] = {}
-            for key in self.episode_sums.keys():
-                self.extras["train/episode"]['rew_' + key] = torch.mean(
-                    self.episode_sums[key][train_env_ids])
-                self.episode_sums[key][train_env_ids] = 0.
+            
+            self.extras["train/episode"] = {}                   # 初始化训练数据统计结果存储字典
+            for key in self.episode_sums.keys():                # 遍历所有 episode 累积项（如 reward, energy 等）
+                self.extras["train/episode"]['rew_' + key] = torch.mean(self.episode_sums[key][train_env_ids])          # 计算训练环境中该指标的平均值并保存
+                self.episode_sums[key][train_env_ids] = 0.              # 将训练环境对应的 episode 累计值清零（准备下一轮重新累积）
+
+        # 选出属于评估环境的 ID（编号大于等于 self.num_train_envs）
         eval_env_ids = env_ids[env_ids >= self.num_train_envs]
+
         if len(eval_env_ids) > 0:
+            # 初始化评估数据统计结果存储字典
             self.extras["eval/episode"] = {}
+
+            # 遍历所有 episode 累积项
             for key in self.episode_sums.keys():
-                # save the evaluation rollout result if not already saved
+                # 找出还未记录评估值的环境（初始值为 -1 表示未写入）
                 unset_eval_envs = eval_env_ids[self.episode_sums_eval[key][eval_env_ids] == -1]
+
+                # 将这部分环境的 episode 值从 episode_sums 拷贝到 episode_sums_eval 中
                 self.episode_sums_eval[key][unset_eval_envs] = self.episode_sums[key][unset_eval_envs]
+
+                # 清零评估环境中当前轮的累计值（准备下一轮）
                 self.episode_sums[key][eval_env_ids] = 0.
+
 
         # log additional curriculum info
         if self.cfg.terrain.curriculum:

@@ -1,3 +1,4 @@
+
 def train_go1(headless=True):
 
     import isaacgym
@@ -6,6 +7,7 @@ def train_go1(headless=True):
 
     from go1_gym.envs.base.legged_robot_config import Cfg
     from go1_gym.envs.go1.go1_config import config_go1
+    from go1_gym.envs.go1.q20_config import config_q20                    #revised by hongyu, 05/14/2025
     from go1_gym.envs.go1.velocity_tracking import VelocityTrackingEasyEnv
 
     from ml_logger import logger
@@ -15,8 +17,28 @@ def train_go1(headless=True):
     from go1_gym_learn.ppo_cse.actor_critic import AC_Args
     from go1_gym_learn.ppo_cse.ppo import PPO_Args
     from go1_gym_learn.ppo_cse import RunnerArgs
+    from torch.utils.tensorboard import SummaryWriter               #revised by hongyu, 05/15/2025, adding tensorboard
+
+
+    ####################################### #revised by hongyu, 05/15/2025, adding tensorboard ##################
+    #创建TensorBoard Writer
+    from pathlib import Path
+    from go1_gym import MINI_GYM_ROOT_DIR
+    import time
+
+    stem = Path(__file__).stem                    #获取当前脚本文件名称，用于命名日志子目录
+    #log_dir 构建了层级结构的日志目录，包含日期、脚本名称和时间戳，确保每次运行的日志文件不会互相覆盖
+    log_dir = Path(f"{MINI_GYM_ROOT_DIR}/runs/gait-conditioned-agility/{time.strftime('%Y-%m-%d')}/{stem}/{time.strftime('%H%M%S.%f')}")
+    log_dir.mkdir(parents=True, exist_ok=True)    #创建上述路径，parents=True表示如果上级目录不存在则一并创建，exist_ok表示如果目录已经存在则不报错
+
+    #创建一个SummaryWriter的实例
+    writer = SummaryWriter(log_dir=str(log_dir))
+
+
+    ##############################################################################################################
 
     config_go1(Cfg)
+    # config_q20(Cfg)       #revised by hongyu, 05/14/2025
 
     Cfg.commands.num_lin_vel_bins = 30
     Cfg.commands.num_ang_vel_bins = 30
@@ -83,8 +105,8 @@ def train_go1(headless=True):
     Cfg.commands.num_commands = 15
     Cfg.env.observe_two_prev_actions = True
     Cfg.env.observe_yaw = False
-    Cfg.env.num_observations = 70
-    Cfg.env.num_scalar_observations = 70
+    Cfg.env.num_observations = 70                           #default 70
+    Cfg.env.num_scalar_observations = 70                    #default 70
     Cfg.env.observe_gait_commands = True
     Cfg.env.observe_timing_parameter = False
     Cfg.env.observe_clock_inputs = True
@@ -206,15 +228,23 @@ def train_go1(headless=True):
 
     env = VelocityTrackingEasyEnv(sim_device='cuda:0', headless=False, cfg=Cfg)
 
-    # log the experiment parameters
-    logger.log_params(AC_Args=vars(AC_Args), PPO_Args=vars(PPO_Args), RunnerArgs=vars(RunnerArgs),
-                      Cfg=vars(Cfg))
+    # # log the experiment parameters
+    # logger.log_params(AC_Args=vars(AC_Args), PPO_Args=vars(PPO_Args), RunnerArgs=vars(RunnerArgs),
+    #                   Cfg=vars(Cfg))
+    
+    #把实验数据记录到TensorBoard              #revised by hongyu, 05/15/2025, adding tensorboard      
+    writer.add_text('Parameters/AC_Args', str(vars(AC_Args)))
+    writer.add_text('Parameters/PPO_Args', str(vars(PPO_Args)))
+    writer.add_text('Parameters/RunnerArgs', str(vars(RunnerArgs)))
+    writer.add_text('Parameters/Cfg', str(vars(Cfg)))
 
     env = HistoryWrapper(env)
     gpu_id = 0
-    runner = Runner(env, device=f"cuda:{gpu_id}")
+    runner = Runner(env, device=f"cuda:{gpu_id}",writer = writer,log_dir = log_dir)  # 传递writer给Runner 
     runner.learn(num_learning_iterations=100000, init_at_random_ep_len=True, eval_freq=100)
 
+    #关闭writer
+    writer.close()
 
 if __name__ == '__main__':
     from pathlib import Path
@@ -253,4 +283,4 @@ if __name__ == '__main__':
                 """, filename=".charts.yml", dedent=True)
 
     # to see the environment rendering, set headless=False
-    train_go1(headless=False)
+    train_go1(headless=True)

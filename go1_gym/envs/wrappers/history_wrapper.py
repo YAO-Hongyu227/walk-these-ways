@@ -9,8 +9,14 @@ class HistoryWrapper(gym.Wrapper):
         self.env = env
 
         self.obs_history_length = self.env.cfg.env.num_observation_history
+        # print("********************************************************************")
+        # print('self.obs_history_length = ', self.obs_history_length) = 30
+        # print("********************************************************************")
+
 
         self.num_obs_history = self.obs_history_length * self.num_obs
+        # print('self.num_obs_history = ', self.num_obs_history)  = 2100
+        # print("********************************************************************")
         self.obs_history = torch.zeros(self.env.num_envs, self.num_obs_history, dtype=torch.float,
                                        device=self.env.device, requires_grad=False)
         self.num_privileged_obs = self.num_privileged_obs
@@ -21,12 +27,21 @@ class HistoryWrapper(gym.Wrapper):
         privileged_obs = info["privileged_obs"]
 
         self.obs_history = torch.cat((self.obs_history[:, self.env.num_obs:], obs), dim=-1)
+        # print("********************************************************************")
+        # print('self.obs_history.shape = ', self.obs_history.shape)
+        # print("********************************************************************")
         return {'obs': obs, 'privileged_obs': privileged_obs, 'obs_history': self.obs_history}, rew, done, info
 
     def get_observations(self):
         obs = self.env.get_observations()
+        # print("********************************************************************")
+        # print('self.obs.shape = ', obs.shape)   self.obs.shape =  torch.Size([4096, 76]), should be [4096,70]
+        # print("********************************************************************")
         privileged_obs = self.env.get_privileged_observations()
         self.obs_history = torch.cat((self.obs_history[:, self.env.num_obs:], obs), dim=-1)
+        # print("********************************************************************")
+        # print('self.obs_history.shape = ', self.obs_history.shape) = 2106, should be 2100
+        # print("********************************************************************")
         return {'obs': obs, 'privileged_obs': privileged_obs, 'obs_history': self.obs_history}
 
     def reset_idx(self, env_ids):  # it might be a problem that this isn't getting called!!

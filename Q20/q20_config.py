@@ -33,10 +33,15 @@ from legged_gym.envs.base.legged_robot_config import LeggedRobotCfg, LeggedRobot
 class Q20Cfg( LeggedRobotCfg ):
 
     class env( LeggedRobotCfg.env):
+        # num_envs = 4000
+        # num_observations = 42
+
         num_envs = 4096
+        num_observations = 45 + 8
+
+
          # !!! syn original add-on !!!
         frequencies = 1.5 # used 1.0 used 0.94 for jumping used 2.0
-        num_observations = 45 + 8
     
 
     class terrain:
@@ -125,38 +130,38 @@ class Q20Cfg( LeggedRobotCfg ):
 
     class domain_rand:
         # friction
-        rand_interval_s = 8
+        rand_interval_s = 10
         randomize_friction = True
-        friction_range = [0.1, 1.5]
+        friction_range = [0.5, 1.25]
         # base mass
-        randomize_base_mass = True
+        randomize_base_mass = False
         added_mass_range = [-5.0, 15.0]
         # push robot
         push_robots = True
-        push_interval_s = 10
-        max_push_vel_xy = 1.5
+        push_interval_s = 15
+        max_push_vel_xy = 1.
         # com displacement
-        randomize_com_displacement = True
+        randomize_com_displacement = False
         com_displacement_range = [-0.10, 0.10]
         # motor strength
-        randomize_motor_strength = True
+        randomize_motor_strength = False
         motor_strength_range = [0.9, 1.1]
         # Kp
-        randomize_Kp_factor = True
+        randomize_Kp_factor = False
         Kp_factor_range = [0.8, 1.2]
         # Kd
-        randomize_Kd_factor = True
+        randomize_Kd_factor = False
         Kd_factor_range = [0.3, 2.0]
         # gravity
-        randomize_gravity = True
+        randomize_gravity = False
         gravity_range = [-1.0, 1.0]
         gravity_rand_interval_s = 8.0
         gravity_impulse_duration = 0.99
         # restitution
-        randomize_restitution = True
+        randomize_restitution = False
         restitution_range = [0, 0.3]
         # motor offset
-        randomize_motor_offset = True
+        randomize_motor_offset = False
         motor_offset_range = [-0.01, 0.01]
         # lag timesteps
         randomize_lag_timesteps = True

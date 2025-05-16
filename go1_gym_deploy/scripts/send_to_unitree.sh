@@ -6,3 +6,10 @@ wget --directory-prefix=../docker -nc --load-cookies /tmp/cookies.txt "https://d
 rsync -av -e ssh --exclude=*.pt --exclude=*.mp4 $PWD/../../go1_gym_deploy $PWD/../../runs $PWD/../setup.py unitree@192.168.123.15:/home/unitree/go1_gym
 #scp -r $PWD/../../runs pi@192.168.12.1:/home/pi/go1_gym
 #scp -r $PWD/../../setup.py pi@192.168.12.1:/home/pi/go1_gym
+
+
+
+
+    # Transfers the necessary code files to the robot
+    # Excludes large files like raw model checkpoints and videos
+    # Ensures the correct setup files are present for installation
