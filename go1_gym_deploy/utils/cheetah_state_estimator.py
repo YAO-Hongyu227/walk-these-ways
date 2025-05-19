@@ -48,7 +48,7 @@ def get_rotation_matrix_from_rpy(rpy):
     return rot
 
 
-class StateEstimator:
+class   StateEstimator:
     def __init__(self, lc, use_cameras=True):
 
         # reverse legs
@@ -202,8 +202,8 @@ class StateEstimator:
         cmd_y = 0.                    # 横向速度
         cmd_height = 0.              # 机体高度
         cmd_footswing = 0.08         # 抬腿高度
-        cmd_stance_width = 0.33      # 双腿间距宽度
-        cmd_stance_length = 0.40     # 双腿前后间距
+        cmd_stance_width = 0.33 * 1.5      # 双腿间距宽度
+        cmd_stance_length = 0.40 * 1.5     # 双腿前后间距
         cmd_ori_pitch = 0.           # 俯仰角
         cmd_ori_roll = 0.            # 横滚角
         cmd_freq = 3.0               # 步态频率

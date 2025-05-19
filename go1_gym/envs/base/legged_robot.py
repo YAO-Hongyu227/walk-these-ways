@@ -934,8 +934,9 @@ class LeggedRobot(BaseTask):
         Returns:
             [torch.Tensor]: Torques sent to the simulation
         """
-        # pd controller
-        actions_scaled = actions[:, :12] * self.cfg.control.action_scale
+        # pd controller 
+        
+        actions_scaled = actions[:, :12] * self.cfg.control.action_scale   #keepcalm * 0.
         actions_scaled[:, [0, 3, 6, 9]] *= self.cfg.control.hip_scale_reduction  # scale down hip flexion range
 
         if self.cfg.domain_rand.randomize_lag_timesteps:
@@ -1319,7 +1320,8 @@ class LeggedRobot(BaseTask):
         # new style curriculum
         self.category_names = ['nominal']
         if self.cfg.commands.gaitwise_curricula:
-            self.category_names = ['pronk', 'trot', 'pace', 'bound']
+            # self.category_names = ['pronk', 'trot', 'pace', 'bound']
+            self.category_names = ['trot']
 
         if self.cfg.commands.curriculum_type == "RewardThresholdCurriculum":
             from .curriculum import RewardThresholdCurriculum

@@ -10,7 +10,6 @@ class CoRLRewards:
 
     def load_env(self, env):
         self.env = env
-
     # ------------ reward functions----------------
     def _reward_tracking_lin_vel(self):
         # Tracking of linear velocity commands (xy axes)
@@ -29,7 +28,7 @@ class CoRLRewards:
     def _reward_ang_vel_xy(self):
         # Penalize xy axes base angular velocity
         return torch.sum(torch.square(self.env.base_ang_vel[:, :2]), dim=1)
-
+    
     def _reward_orientation(self):
         # Penalize non flat base orientation
         return torch.sum(torch.square(self.env.projected_gravity[:, :2]), dim=1)
@@ -150,6 +149,9 @@ class CoRLRewards:
         
         # 从环境的命令中提取俯仰（pitch）和滚转（roll）指令
         roll_pitch_commands = self.env.commands[:, 10:12]
+       
+        # print('* ******************************************8')
+        # print('roll and pitch commands: ',roll_pitch_commands)
         
         # 根据滚转指令生成对应的四元数（绕 x 轴旋转）
         quat_roll = quat_from_angle_axis( -roll_pitch_commands[:, 1], torch.tensor([1, 0, 0], device=self.env.device, dtype=torch.float))
@@ -162,7 +164,6 @@ class CoRLRewards:
         
         # 将重力向量从世界坐标系转换到期望的机体坐标系中
         desired_projected_gravity = quat_rotate_inverse(desired_base_quat, self.env.gravity_vec)
-
 
         return torch.sum(torch.square(self.env.projected_gravity[:, :2] - desired_projected_gravity[:, :2]), dim=1)
 
@@ -178,14 +179,14 @@ class CoRLRewards:
             desired_stance_width = self.env.commands[:, 12:13]
             desired_ys_nom = torch.cat([desired_stance_width / 2, -desired_stance_width / 2, desired_stance_width / 2, -desired_stance_width / 2], dim=1)
         else:
-            desired_stance_width = 0.3
+            desired_stance_width = 0.3 * 1.5
             desired_ys_nom = torch.tensor([desired_stance_width / 2,  -desired_stance_width / 2, desired_stance_width / 2, -desired_stance_width / 2], device=self.env.device).unsqueeze(0)
 
         if self.env.cfg.commands.num_commands >= 14:
             desired_stance_length = self.env.commands[:, 13:14]
             desired_xs_nom = torch.cat([desired_stance_length / 2, desired_stance_length / 2, -desired_stance_length / 2, -desired_stance_length / 2], dim=1)
         else:
-            desired_stance_length = 0.45
+            desired_stance_length = 0.45 * 1.5
             desired_xs_nom = torch.tensor([desired_stance_length / 2,  desired_stance_length / 2, -desired_stance_length / 2, -desired_stance_length / 2], device=self.env.device).unsqueeze(0)
 
         # raibert offsets
