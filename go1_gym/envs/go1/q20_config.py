@@ -10,19 +10,19 @@ def config_q20(Cnfg: Union[Cfg, Meta]):
 
     _.pos = [0.0, 0.0, 0.521]  # x,y,z [m]    0.521          #初始位置
     _.default_joint_angles = {  # = target angles [rad] when action = 0.0
-        'FL_hip_joint': 0.0,  # [rad]
-        'RL_hip_joint': 0.0,  # [rad]
-        'FR_hip_joint': 0.0,  # [rad]
-        'RR_hip_joint': 0.0,  # [rad]
+        'FL_hip_joint': -0.25,  # [rad]
+        'RL_hip_joint': -0.25,  # [rad]
+        'FR_hip_joint': 0.25,  # [rad]
+        'RR_hip_joint': 0.25,  # [rad]
 
-        'FL_thigh_joint': -0.9,  # [rad]
+        'FL_thigh_joint': -0.45,  # [rad]
         'RL_thigh_joint': -0.9,  # [rad]
-        'FR_thigh_joint': -0.9,  # [rad]
-        'RR_thigh_joint': -0.9,  # [rad]            #数字越大,大腿与身体的夹角越大
+        'FR_thigh_joint': -0.45,  # [rad]
+        'RR_thigh_joint': -0.9,  # [rad]            #不带符号，数字越小,大腿与身体的夹角越大
 
-        'FL_calf_joint': 1.3,  # [rad]
+        'FL_calf_joint': 1.4,  # [rad]
         'RL_calf_joint': 1.3,  # [rad]
-        'FR_calf_joint': 1.3,  # [rad]
+        'FR_calf_joint': 1.4,  # [rad]
         'RR_calf_joint': 1.3  # [rad]
 
         # 'FL_calf_joint': 1.5,  # [rad]
@@ -46,7 +46,7 @@ def config_q20(Cnfg: Union[Cfg, Meta]):
     _.file = "/home/tong/Downloads/walk-these-ways/resources/robots/Q20/urdf/Q20B_simple.urdf"
     _.foot_name = "foot"
     _.penalize_contacts_on = ["thigh", "calf"]
-    _.terminate_after_contacts_on = ["base_link", "thigh"]
+    _.terminate_after_contacts_on = ["base_link","thigh"]
     _.self_collisions = 0  # 1 to disable, 0 to enable...bitwise filter
     _.flip_visual_attachments = False
     _.fix_base_link = False
@@ -60,11 +60,15 @@ def config_q20(Cnfg: Union[Cfg, Meta]):
     _.base_height_target = 0.48
 
     _ = Cnfg.reward_scales
-    _.torques = -0.0001
+    _.torques = -0.000001
     _.action_rate = -0.01
-    _.dof_pos_limits = -10.0
+    _.dof_pos_limits = -0.1
     _.orientation = -5.
-    _.base_height = -30.
+    _.base_height = -30.    
+
+    #这两个参数很重要，要多调一段时间
+    _.tracking_lin_vel = 3.
+    _.tracking_ang_vel = 3. #5 至少得是3了，不然总reward上不来，一开始就失败了
 
     _ = Cnfg.terrain
     _.mesh_type = 'trimesh'

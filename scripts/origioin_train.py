@@ -1,4 +1,3 @@
-
 def train_go1(headless=True):
 
     import isaacgym
@@ -19,7 +18,6 @@ def train_go1(headless=True):
     from go1_gym_learn.ppo_cse import RunnerArgs
     from torch.utils.tensorboard import SummaryWriter               #revised by hongyu, 05/15/2025, adding tensorboard
 
-
     ####################################### #revised by hongyu, 05/15/2025, adding tensorboard ##################
     #创建TensorBoard Writer
     from pathlib import Path
@@ -36,38 +34,37 @@ def train_go1(headless=True):
 
 
     ##############################################################################################################
- 
-    # config_go1(Cfg) 
 
-    config_q20(Cfg)       #revised by hongyu, 05/14/2025
+    isq20 = False
+    if isq20:
+        config_q20(Cfg)
+    else:
+        config_go1(Cfg)
+    
 
-    Cfg.commands.num_lin_vel_bins = 30                                      #线性速度命令的离散化箱数，用于将连续的线性速度命令空间分成30个离散区间
-    Cfg.commands.num_ang_vel_bins = 30                                      #角速度命令的离散化箱数，用于将连续的角速度命令空间分成30个离散区间
-    Cfg.curriculum_thresholds.tracking_ang_vel = 0.7                        #角速度跟踪性能的课程学习阈值，当性能达到0.7时，会增加任务难度
-    Cfg.curriculum_thresholds.tracking_lin_vel = 0.8                        #线性速度跟踪性能的课程学习阈值，当性能达到0.8时，会增加任务难度
-    Cfg.curriculum_thresholds.tracking_contacts_shaped_vel = 0.90           #接触速度跟踪性能的课程学习阈值，接触 tracking（机器人腿与地面的接触匹配度），速度 tracking（如身体线速度匹配目标速度），shaped reward（有形奖励函数，比如不是稀疏奖励，而是连续奖励
-    Cfg.curriculum_thresholds.tracking_contacts_shaped_force = 0.90         #接触力跟踪性能的课程学习阈值
+    Cfg.commands.num_lin_vel_bins = 30
+    Cfg.commands.num_ang_vel_bins = 30
+    Cfg.curriculum_thresholds.tracking_ang_vel = 0.7
+    Cfg.curriculum_thresholds.tracking_lin_vel = 0.8
+    Cfg.curriculum_thresholds.tracking_contacts_shaped_vel = 0.90
+    Cfg.curriculum_thresholds.tracking_contacts_shaped_force = 0.90
 
-    Cfg.commands.distributional_commands = True                             #启用分布式命令（distributional commands）模式，使得每次训练中机器人的目标命令（如速度、转向）不再是固定值，而是从设定好的分布中「随机采样」。
+    Cfg.commands.distributional_commands = True
 
-    Cfg.domain_rand.lag_timesteps = 6                                        #模拟控制延迟的时间步数，设置为6个时间步 
-    Cfg.domain_rand.randomize_lag_timesteps = True                          #启用控制延迟的随机化，使延迟时间在训练中变化
-    # Cfg.control.control_type = "actuator_net"                               #设置控制器类型为"actuator_net"，这是一种基于神经网络的执行器模型
+    Cfg.domain_rand.lag_timesteps = 6
+    Cfg.domain_rand.randomize_lag_timesteps = True
+    # Cfg.control.control_type = "P" if isq20 else 'actuator_net'
     Cfg.control.control_type = "P"
 
-    Cfg.domain_rand.randomize_rigids_after_start = False                    #禁用在模拟开始后随机化刚体参数
-    Cfg.env.priv_observe_motion = False                                     #禁用将运动信息作为特权观察的一部分
-    Cfg.env.priv_observe_gravity_transformed_motion = False                 #禁用将重力变换后的运动信息作为特权观察的一部分
-    Cfg.domain_rand.randomize_friction_indep = False                        #禁用独立摩擦系数随机化（每个接触点独立随机化）
-    Cfg.env.priv_observe_friction_indep = False                             #禁用将独立摩擦系数作为特权观察的一部分
-    
+    Cfg.domain_rand.randomize_rigids_after_start = False
+    Cfg.env.priv_observe_motion = False
+    Cfg.env.priv_observe_gravity_transformed_motion = False
+    Cfg.domain_rand.randomize_friction_indep = False
+    Cfg.env.priv_observe_friction_indep = False
     Cfg.domain_rand.randomize_friction = True
     Cfg.env.priv_observe_friction = True
     Cfg.domain_rand.friction_range = [0.1, 3.0]
-
-    Cfg.domain_rand.randomize_restitution = True                            #启用弹性系数随机化，使环境中的弹性系数在训练中变化
-
-
+    Cfg.domain_rand.randomize_restitution = True
     Cfg.env.priv_observe_restitution = True
     Cfg.domain_rand.restitution_range = [0.0, 0.4]
     Cfg.domain_rand.randomize_base_mass = True
@@ -111,8 +108,8 @@ def train_go1(headless=True):
     Cfg.commands.num_commands = 15
     Cfg.env.observe_two_prev_actions = True
     Cfg.env.observe_yaw = False
-    Cfg.env.num_observations = 70                           #default 70
-    Cfg.env.num_scalar_observations = 70                    #default 70
+    Cfg.env.num_observations = 70
+    Cfg.env.num_scalar_observations = 70
     Cfg.env.observe_gait_commands = True
     Cfg.env.observe_timing_parameter = False
     Cfg.env.observe_clock_inputs = True
@@ -123,8 +120,8 @@ def train_go1(headless=True):
     Cfg.domain_rand.tile_height_curriculum_step = 0.01
     Cfg.terrain.border_size = 0.0
     Cfg.terrain.mesh_type = "trimesh"
-    Cfg.terrain.num_cols = 20
-    Cfg.terrain.num_rows = 20
+    Cfg.terrain.num_cols = 30
+    Cfg.terrain.num_rows = 30
     Cfg.terrain.terrain_width = 5.0
     Cfg.terrain.terrain_length = 5.0
     Cfg.terrain.x_init_range = 0.2
@@ -134,32 +131,32 @@ def train_go1(headless=True):
     Cfg.terrain.center_robots = True
     Cfg.terrain.center_span = 4
     Cfg.terrain.horizontal_scale = 0.10
-    Cfg.rewards.use_terminal_foot_height = False       
+    Cfg.rewards.use_terminal_foot_height = False
     Cfg.rewards.use_terminal_body_height = True
-    Cfg.rewards.terminal_body_height = 0.05        #原来是0.05，现在训练trot，低于0.3就结束
+    Cfg.rewards.terminal_body_height = 0.05
     Cfg.rewards.use_terminal_roll_pitch = True
     Cfg.rewards.terminal_body_ori = 1.6
 
     Cfg.commands.resampling_time = 10
 
-    Cfg.reward_scales.feet_slip = -0.04                 #惩罚脚部打滑，鼓励稳定行走
-    Cfg.reward_scales.action_smoothness_1 = -0.1        #惩罚动作不平滑，鼓励动作连续性。
+    Cfg.reward_scales.feet_slip = -0.04
+    Cfg.reward_scales.action_smoothness_1 = -0.1
     Cfg.reward_scales.action_smoothness_2 = -0.1
-    Cfg.reward_scales.dof_vel = -1e-4                   #惩罚关节速度过快，鼓励平稳运动
+    Cfg.reward_scales.dof_vel = -1e-4
     Cfg.reward_scales.dof_pos = -0.0
     Cfg.reward_scales.jump = 10.0
-    Cfg.reward_scales.base_height = -30.     #0.0
-    Cfg.rewards.base_height_target = 0.48               #狗的目标站立高度
+    Cfg.reward_scales.base_height = 0.0
+    Cfg.rewards.base_height_target = 0.48 if isq20 else 0.30
     Cfg.reward_scales.estimation_bonus = 0.0
-    Cfg.reward_scales.raibert_heuristic = -10.0         #惩罚与 Raibert 启发式不一致的行为，鼓励特定的步态模式。
+    Cfg.reward_scales.raibert_heuristic = -10.0
     Cfg.reward_scales.feet_impact_vel = -0.0
     Cfg.reward_scales.feet_clearance = -0.0
     Cfg.reward_scales.feet_clearance_cmd = -0.0
     Cfg.reward_scales.feet_clearance_cmd_linear = -30.0
-    Cfg.reward_scales.orientation = -30.              
-    Cfg.reward_scales.orientation_control = -7.5       #defalut-5  #惩罚机器人pitch/roll偏离0的程度
-    Cfg.reward_scales.tracking_stance_width = -0.2
-    Cfg.reward_scales.tracking_stance_length = -0.2
+    Cfg.reward_scales.orientation = 0.0
+    Cfg.reward_scales.orientation_control = -5.0
+    Cfg.reward_scales.tracking_stance_width = -0.0
+    Cfg.reward_scales.tracking_stance_length = -0.0
     Cfg.reward_scales.lin_vel_z = -0.02
     Cfg.reward_scales.ang_vel_xy = -0.001
     Cfg.reward_scales.feet_air_time = 0.0
@@ -177,51 +174,36 @@ def train_go1(headless=True):
     Cfg.rewards.sigma_rew_neg = 0.02
 
 
-    amplified_scalar = 1.5          #算了一下，g20的大小是go1 的1.5倍
+    amplified_factor = 1.5 if isq20 else 1.
     Cfg.commands.lin_vel_x = [-1.0, 1.0]
     Cfg.commands.lin_vel_y = [-0.6, 0.6]
     Cfg.commands.ang_vel_yaw = [-1.0, 1.0]
-    Cfg.commands.body_height_cmd = [-0.25* amplified_scalar, 0.15* amplified_scalar] 
-
-    #原来的多种步态
-    # Cfg.commands.gait_frequency_cmd_range = [2.0, 4.0]
-    # Cfg.commands.gait_phase_cmd_range = [0.0, 1.0]
-    # Cfg.commands.gait_offset_cmd_range = [0.0, 1.0]
-    # Cfg.commands.gait_bound_cmd_range = [0.0, 1.0]
-    # Cfg.commands.gait_duration_cmd_range = [0.5, 0.5]
-
-    # # 只训练固定的trot步态
-    Cfg.commands.gait_frequency_cmd_range = [3.0, 3.0]  # 固定频率
-    Cfg.commands.gait_phase_cmd_range = [0.5, 0.5]      # 对角步态相位
-    Cfg.commands.gait_offset_cmd_range = [0.0, 0.0]
-    Cfg.commands.gait_bound_cmd_range = [0.0, 0.0]
+    Cfg.commands.body_height_cmd = [-0.25*amplified_factor, 0.15*amplified_factor]
+    Cfg.commands.gait_frequency_cmd_range = [2.0, 4.0]
+    Cfg.commands.gait_phase_cmd_range = [0.0, 1.0]
+    Cfg.commands.gait_offset_cmd_range = [0.0, 1.0]
+    Cfg.commands.gait_bound_cmd_range = [0.0, 1.0]
     Cfg.commands.gait_duration_cmd_range = [0.5, 0.5]
-
-    Cfg.commands.footswing_height_range = [0.03 * amplified_scalar, 0.35 * amplified_scalar] 
-    # Cfg.commands.body_pitch_range = [-0.4, 0.4]
-    Cfg.commands.body_pitch_range = [-0.0, 0.0]
+    Cfg.commands.footswing_height_range = [0.03*amplified_factor, 0.35*amplified_factor]
+    Cfg.commands.body_pitch_range = [-0.4, 0.4]
     Cfg.commands.body_roll_range = [-0.0, 0.0]
-    Cfg.commands.stance_width_range = [0.10 * amplified_scalar, 0.45 * amplified_scalar]  
-    Cfg.commands.stance_length_range = [0.35 * amplified_scalar, 0.45 * amplified_scalar] 
+    Cfg.commands.stance_width_range = [0.10*amplified_factor, 0.45*amplified_factor]
+    Cfg.commands.stance_length_range = [0.35*amplified_factor, 0.45*amplified_factor]
 
     Cfg.commands.limit_vel_x = [-5.0, 5.0]
     Cfg.commands.limit_vel_y = [-0.6, 0.6]
     Cfg.commands.limit_vel_yaw = [-5.0, 5.0]
-    Cfg.commands.limit_body_height = [-0.25, 0.15]
-
-    Cfg.commands.limit_gait_frequency = [3.0, 3.0]
-    Cfg.commands.limit_gait_phase = [0.5, 0.5]
-    Cfg.commands.limit_gait_offset = [0.0, 0.0]
-    Cfg.commands.limit_gait_bound = [0.0, 0.0]
+    Cfg.commands.limit_body_height = [-0.25*amplified_factor, 0.15*amplified_factor]
+    Cfg.commands.limit_gait_frequency = [2.0, 4.0]
+    Cfg.commands.limit_gait_phase = [0.0, 1.0]
+    Cfg.commands.limit_gait_offset = [0.0, 1.0]
+    Cfg.commands.limit_gait_bound = [0.0, 1.0]
     Cfg.commands.limit_gait_duration = [0.5, 0.5]
-
-    Cfg.commands.limit_footswing_height = [0.03 * amplified_scalar, 0.35 * amplified_scalar]
+    Cfg.commands.limit_footswing_height = [0.03*amplified_factor, 0.35*amplified_factor]
     Cfg.commands.limit_body_pitch = [-0.4, 0.4]
     Cfg.commands.limit_body_roll = [-0.0, 0.0]
-    # Cfg.commands.limit_stance_width = [0.10 * amplified_scalar, 0.45 * amplified_scalar]
-    # Cfg.commands.limit_stance_length = [0.35 * amplified_scalar, 0.45 * amplified_scalar]
-    Cfg.commands.limit_stance_width = [0.25 * amplified_scalar, 0.45 * amplified_scalar ]
-    Cfg.commands.limit_stance_length = [0.4 * amplified_scalar, 0.45 * amplified_scalar]
+    Cfg.commands.limit_stance_width = [0.10*amplified_factor, 0.45*amplified_factor]
+    Cfg.commands.limit_stance_length = [0.35*amplified_factor, 0.45*amplified_factor]
 
     Cfg.commands.num_bins_vel_x = 21
     Cfg.commands.num_bins_vel_y = 1
@@ -242,28 +224,13 @@ def train_go1(headless=True):
     Cfg.terrain.yaw_init_range = 3.14
     Cfg.normalization.clip_actions = 10.0
 
-    
+    Cfg.commands.exclusive_phase_offset = False
     Cfg.commands.pacing_offset = False
     Cfg.commands.binary_phases = True
-
-    #只训练一种步态
-    Cfg.commands.gaitwise_curricula = True            #True的话就是打开课程学习，只训练一种步态(把categories改成了只有trot步态)
-    Cfg.commands.exclusive_phase_offset = False       #当 exclusive_phase_offset 设置为 True 时，训练环境中的每个实例（agent）会被分配一个特定的步态类型，如 trotting、pacing 或 bounding。
-                                                      #这意味着每个 agent 在训练过程中只学习一种特定的步态，从而使其专注于该步态的优化。
-    Cfg.commands.balance_gait_distribution = False    #当设置为 True 时，该参数确保在训练过程中，各种步态（如 pronk、trot、pace、bound）在环境中均匀分布。
-     
-
-    # config_q20(Cfg)       #revised by hongyu, 05/14/2025
-    for name, value in vars(Cfg.reward_scales).items():
-      if float(value) is not 0.0:
-        print(f"{name}: {value}")
+    Cfg.commands.gaitwise_curricula = True
 
     env = VelocityTrackingEasyEnv(sim_device='cuda:0', headless=headless, cfg=Cfg)
 
-    # log the experiment parameters
-    logger.log_params(AC_Args=vars(AC_Args), PPO_Args=vars(PPO_Args), RunnerArgs=vars(RunnerArgs),
-                      Cfg=vars(Cfg))
-    
     #把实验数据记录到TensorBoard              #revised by hongyu, 05/15/2025, adding tensorboard      
     writer.add_text('Parameters/AC_Args', str(vars(AC_Args)))
     writer.add_text('Parameters/PPO_Args', str(vars(PPO_Args)))
@@ -275,8 +242,8 @@ def train_go1(headless=True):
     runner = Runner(env, device=f"cuda:{gpu_id}",writer = writer,log_dir = log_dir)  # 传递writer给Runner 
     runner.learn(num_learning_iterations=10000, init_at_random_ep_len=True, eval_freq=100)
 
-    #关闭writer
     writer.close()
+
 
 if __name__ == '__main__':
     from pathlib import Path
@@ -316,4 +283,3 @@ if __name__ == '__main__':
 
     # to see the environment rendering, set headless=False
     train_go1(headless=True)
-    # train_go1(headless=False)

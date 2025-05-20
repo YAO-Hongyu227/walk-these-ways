@@ -64,19 +64,54 @@ class Curriculum:
         # bump the envelop if
         pass
 
-    def sample_bins(self, batch_size, low=None, high=None):
-        """default to uniform"""
-        if low is not None and high is not None: # if bounds given
-            valid_inds = np.logical_and(
-                self.grid >= low[:, None],
-                self.grid <= high[:, None]
-            ).all(axis=0)
-            temp_weights = np.zeros_like(self.weights)
-            temp_weights[valid_inds] = self.weights[valid_inds]
-            inds = self.rng.choice(self.indices, batch_size, p=temp_weights / temp_weights.sum())
-        else: # if no bounds given
-            inds = self.rng.choice(self.indices, batch_size, p=self.weights / self.weights.sum())
+    # def sample_bins(self, batch_size, low=None, high=None):
+    #     """default to uniform"""
+    #     if low is not None and high is not None: # if bounds given
+    #         valid_inds = np.logical_and(
+    #             self.grid >= low[:, None],
+    #             self.grid <= high[:, None]
+    #         ).all(axis=0)
+    #         temp_weights = np.zeros_like(self.weights)
+    #         temp_weights[valid_inds] = self.weights[valid_inds]
+    #         inds = self.rng.choice(self.indices, batch_size, p=temp_weights / temp_weights.sum())
+    #     else: # if no bounds given
+    #         inds = self.rng.choice(self.indices, batch_size, p=self.weights / self.weights.sum())
 
+    #     return self.grid.T[inds], inds
+
+
+    def sample_bins(self, batch_size, low=None, high=None):
+        """Sample bins with optional bounds, handling NaN and negative weights."""
+        # 创建权重副本以避免修改原始数据
+        temp_weights = np.copy(self.weights)
+
+        # 应用边界限制（如果提供）
+        if low is not None and high is not None:
+            # 确保 low 和 high 是 numpy 数组
+            low = np.array(low)
+            high = np.array(high)
+            # 检查 grid 中每个 bin 是否在指定的低高范围内
+            valid_mask = np.logical_and(self.grid >= low[:, None], self.grid <= high[:, None]).all(axis=0)
+            # 将不在范围内的权重设置为 0
+            temp_weights[~valid_mask] = 0.0
+
+        # 将 NaN 权重设置为 0
+        temp_weights = np.where(np.isnan(temp_weights), 0.0, temp_weights)
+        # 将负权重设置为 0
+        temp_weights[temp_weights < 0] = 0.0
+
+        total_weight = temp_weights.sum()
+        if total_weight == 0:
+            # 如果总权重为 0，则使用均匀分布
+            probabilities = np.full_like(temp_weights, 1 / len(temp_weights))
+        else:
+            # 归一化权重以获得概率分布
+            probabilities = temp_weights / total_weight
+
+        # 使用归一化的概率进行加权随机采样
+        inds = self.rng.choice(self.indices, batch_size, p=probabilities)
+
+        # 返回选中的 grid 值和对应的索引
         return self.grid.T[inds], inds
 
     def sample_uniform_from_cell(self, centroids):

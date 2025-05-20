@@ -113,7 +113,7 @@ class Cfg(PrefixProto, cli=False):
         subsample_gait = False
         gait_interval_s = 10.  # time between resampling gait params
         vel_interval_s = 10.
-        jump_interval_s = 20.  # time between jumps
+        jump_interval_s = 9999999999999#20.  # time between jumps
         jump_duration_s = 0.1  # duration of jump
         jump_height = 0.3
         heading_command = True  # if true: compute ang vel command from heading error
@@ -157,11 +157,13 @@ class Cfg(PrefixProto, cli=False):
         num_bins_vel_y = 3
         num_bins_vel_yaw = 25
         num_bins_body_height = 1
+
         num_bins_gait_frequency = 11
         num_bins_gait_phase = 11
         num_bins_gait_offset = 2
         num_bins_gait_bound = 2
         num_bins_gait_duration = 3
+
         num_bins_footswing_height = 1
         num_bins_body_pitch = 1
         num_bins_body_roll = 1
@@ -189,8 +191,8 @@ class Cfg(PrefixProto, cli=False):
         exclusive_phase_offset = True
         binary_phases = False
         pacing_offset = False
-        balance_gait_distribution = True
-        gaitwise_curricula = True
+        balance_gait_distribution = True            #当设置为 True 时，此参数确保在训练过程中，各种预定义的步态（如 trotting、pronking、bounding、pacing）在采样时具有均衡的分布
+        gaitwise_curricula = True                   #当设置为 True 时，此参数启用基于步态的课程学习策略，即在训练过程中，按照步态的复杂性逐步引导模型学习。
 
     class curriculum_thresholds(PrefixProto, cli=False):
         tracking_lin_vel = 0.8  # closer to 1 is tighter

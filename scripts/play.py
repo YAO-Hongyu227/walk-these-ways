@@ -1,5 +1,5 @@
 import isaacgym
-
+import os
 assert isaacgym
 import torch
 import numpy as np
@@ -18,7 +18,12 @@ def load_policy(logdir):
     body = torch.jit.load(logdir + '/checkpoints/body_latest.jit')
     import os
     adaptation_module = torch.jit.load(logdir + '/checkpoints/adaptation_module_latest.jit')
+    
+    body_path = logdir + '/checkpoints/body_latest.jit'
+    adaptation_module_path = logdir + '/checkpoints/adaptation_module_latest.jit'
 
+    print(f"Body model path: {body_path}")
+    print(f"Adaptation module path: {adaptation_module_path}")
     def policy(obs, info={}):
         i = 0
         latent = adaptation_module.forward(obs["obs_history"].to('cpu'))
@@ -31,7 +36,8 @@ def load_policy(logdir):
 
 def load_env(label, headless=False):
     dirs = glob.glob(f"../runs/{label}/*")
-    logdir = sorted(dirs)[0]
+    dirs = [d for d in dirs if ".%f" not in os.path.basename(d)]
+    logdir = sorted(dirs)[-1]
 
     with open(logdir + "/parameters.pkl", 'rb') as file:
         pkl_cfg = pkl.load(file)
@@ -70,7 +76,7 @@ def load_env(label, headless=False):
 
     Cfg.domain_rand.lag_timesteps = 6
     Cfg.domain_rand.randomize_lag_timesteps = True
-    Cfg.control.control_type = "actuator_net"
+    Cfg.control.control_type = "P"
 
     from go1_gym.envs.wrappers.history_wrapper import HistoryWrapper
 
@@ -94,7 +100,7 @@ def play_go1(headless=True):
     import glob
     import os
 
-    label = "gait-conditioned-agility/pretrain-v0/train"
+    label = "gait-conditioned-agility/2025-05-20/train"
 
     env, policy = load_env(label, headless=headless)
 
@@ -108,10 +114,10 @@ def play_go1(headless=True):
     body_height_cmd = 0.0
     step_frequency_cmd = 3.0
     gait = torch.tensor(gaits["trotting"])
-    footswing_height_cmd = 0.08
+    footswing_height_cmd = 0.08*1.5
     pitch_cmd = 0.0
     roll_cmd = 0.0
-    stance_width_cmd = 0.25
+    stance_width_cmd = 0.25 * 1.5
 
     measured_x_vels = np.zeros(num_eval_steps)
     target_x_vels = np.ones(num_eval_steps) * x_vel_cmd

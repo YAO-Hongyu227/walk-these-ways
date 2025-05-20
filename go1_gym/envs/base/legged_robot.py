@@ -137,7 +137,7 @@ class LeggedRobot(BaseTask):
         if self.viewer and self.enable_viewer_sync and self.debug_viz:
             self._draw_debug_vis()
 
-        self._render_headless()
+        # self._render_headless()               #nosavevideo
 
     def check_termination(self):
         """ Check if environments need to be reset
@@ -935,7 +935,7 @@ class LeggedRobot(BaseTask):
             [torch.Tensor]: Torques sent to the simulation
         """
         # pd controller 
-        
+
         actions_scaled = actions[:, :12] * self.cfg.control.action_scale   #keepcalm * 0.
         actions_scaled[:, [0, 3, 6, 9]] *= self.cfg.control.hip_scale_reduction  # scale down hip flexion range
 
@@ -1322,7 +1322,7 @@ class LeggedRobot(BaseTask):
         if self.cfg.commands.gaitwise_curricula:
             # self.category_names = ['pronk', 'trot', 'pace', 'bound']
             self.category_names = ['trot']
-
+    
         if self.cfg.commands.curriculum_type == "RewardThresholdCurriculum":
             from .curriculum import RewardThresholdCurriculum
             CurriculumClass = RewardThresholdCurriculum

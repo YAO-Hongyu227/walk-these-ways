@@ -49,7 +49,7 @@ class RunnerArgs(PrefixProto, cli=False):
 
     # logging
     save_interval = 400  # check for potential saves every this many iterations
-    save_video_interval = 100
+    save_video_interval = 10000
     log_freq = 10
 
     # load and resume
@@ -155,14 +155,14 @@ class Runner:
                     obs, privileged_obs, obs_history, rewards, dones = obs.to(self.device), privileged_obs.to(self.device), obs_history.to(self.device), rewards.to(self.device), dones.to(self.device)
                     self.alg.process_env_step(rewards[:num_train_envs], dones[:num_train_envs], infos)
 
-                    # if 'train/episode' in infos:
-                        # with logger.Prefix(metrics="train/episode"):
-                            # logger.store_metrics(**infos['train/episode'])
+                    if 'train/episode' in infos:
+                        with logger.Prefix(metrics="train/episode"):
+                            logger.store_metrics(**infos['train/episode'])
                         
 
-                    # if 'eval/episode' in infos:
-                    #     with logger.Prefix(metrics="eval/episode"):
-                    #         logger.store_metrics(**infos['eval/episode'])
+                    if 'eval/episode' in infos:
+                        with logger.Prefix(metrics="eval/episode"):
+                            logger.store_metrics(**infos['eval/episode'])
 
 
                     # if 'curriculum' in infos:     #TODO：这句话换成log_dir之后能看到reward了，但是不知道原来为什么会这样写，找不到curriculum
@@ -196,6 +196,19 @@ class Runner:
                 start = stop
                 self.alg.compute_returns(obs_history[:num_train_envs], privileged_obs[:num_train_envs])
 
+                if it % curriculum_dump_freq == 0:
+                    logger.save_pkl({"iteration": it,
+                                     **caches.slot_cache.get_summary(),
+                                     **caches.dist_cache.get_summary()},
+                                    path=f"curriculum/info.pkl", append=True)
+
+                    if 'curriculum/distribution' in infos:
+                        logger.save_pkl({"iteration": it,
+                                         "distribution": distribution},
+                                         path=f"curriculum/distribution.pkl", append=True)
+
+
+
                
 
             mean_value_loss, mean_surrogate_loss, mean_adaptation_module_loss, mean_decoder_loss, mean_decoder_loss_student, mean_adaptation_module_test_loss, mean_decoder_test_loss, mean_decoder_test_loss_student = self.alg.update()
@@ -207,22 +220,75 @@ class Runner:
             if it % RunnerArgs.save_interval == 0:
                 self.save(os.path.join(self.log_dir, "model_{}.pt".format(it)))
             ep_infos.clear()
-            # logger.store_metrics(
-            #     # total_time=learn_time - collection_time,
-            #     time_elapsed=logger.since('start'),
-            #     time_iter=logger.split('epoch'),
-            #     adaptation_loss=mean_adaptation_module_loss,
-            #     mean_value_loss=mean_value_loss,
-            #     mean_surrogate_loss=mean_surrogate_loss,
-            #     mean_decoder_loss=mean_decoder_loss,
-            #     mean_decoder_loss_student=mean_decoder_loss_student,
-            #     mean_decoder_test_loss=mean_decoder_test_loss,
-            #     mean_decoder_test_loss_student=mean_decoder_test_loss_student,
-            #     mean_adaptation_module_test_loss=mean_adaptation_module_test_loss
-            # )
+
+            logger.store_metrics(
+                # total_time=learn_time - collection_time,
+                time_elapsed=logger.since('start'),
+                time_iter=logger.split('epoch'),
+                adaptation_loss=mean_adaptation_module_loss,
+                mean_value_loss=mean_value_loss,
+                mean_surrogate_loss=mean_surrogate_loss,
+                mean_decoder_loss=mean_decoder_loss,
+                mean_decoder_loss_student=mean_decoder_loss_student,
+                mean_decoder_test_loss=mean_decoder_test_loss,
+                mean_decoder_test_loss_student=mean_decoder_test_loss_student,
+                mean_adaptation_module_test_loss=mean_adaptation_module_test_loss
+            )
 
             if RunnerArgs.save_video_interval:
                 self.log_video(it)
+            
+            self.tot_timesteps += self.num_steps_per_env * self.env.num_envs
+            if logger.every(RunnerArgs.log_freq, "iteration", start_on=1):
+                # if it % Config.log_freq == 0:
+                logger.log_metrics_summary(key_values={"timesteps": self.tot_timesteps, "iterations": it})
+                logger.job_running()
+
+            if it % RunnerArgs.save_interval == 0:
+                with logger.Sync():
+                    logger.torch_save(self.alg.actor_critic.state_dict(), f"checkpoints/ac_weights_{it:06d}.pt")
+                    logger.duplicate(f"checkpoints/ac_weights_{it:06d}.pt", f"checkpoints/ac_weights_last.pt")
+
+                    path = './tmp/legged_data'
+
+                    os.makedirs(path, exist_ok=True)
+
+                    adaptation_module_path = f'{path}/adaptation_module_latest.jit'
+                    adaptation_module = copy.deepcopy(self.alg.actor_critic.adaptation_module).to('cpu')
+                    traced_script_adaptation_module = torch.jit.script(adaptation_module)
+                    traced_script_adaptation_module.save(adaptation_module_path)
+
+                    body_path = f'{path}/body_latest.jit'
+                    body_model = copy.deepcopy(self.alg.actor_critic.actor_body).to('cpu')
+                    traced_script_body_module = torch.jit.script(body_model)
+                    traced_script_body_module.save(body_path)
+
+                    logger.upload_file(file_path=adaptation_module_path, target_path=f"checkpoints/", once=False)
+                    logger.upload_file(file_path=body_path, target_path=f"checkpoints/", once=False)
+
+            self.current_learning_iteration += num_learning_iterations
+
+        with logger.Sync():
+            logger.torch_save(self.alg.actor_critic.state_dict(), f"checkpoints/ac_weights_{it:06d}.pt")
+            logger.duplicate(f"checkpoints/ac_weights_{it:06d}.pt", f"checkpoints/ac_weights_last.pt")
+
+            path = './tmp/legged_data'
+
+            os.makedirs(path, exist_ok=True)
+
+            adaptation_module_path = f'{path}/adaptation_module_latest.jit'
+            adaptation_module = copy.deepcopy(self.alg.actor_critic.adaptation_module).to('cpu')
+            traced_script_adaptation_module = torch.jit.script(adaptation_module)
+            traced_script_adaptation_module.save(adaptation_module_path)
+
+            body_path = f'{path}/body_latest.jit'
+            body_model = copy.deepcopy(self.alg.actor_critic.actor_body).to('cpu')
+            traced_script_body_module = torch.jit.script(body_model)
+            traced_script_body_module.save(body_path)
+
+            logger.upload_file(file_path=adaptation_module_path, target_path=f"checkpoints/", once=False)
+            logger.upload_file(file_path=body_path, target_path=f"checkpoints/", once=False)
+
 
         self.current_learning_iteration += num_learning_iterations
         self.save(
