@@ -248,7 +248,7 @@ class LeggedRobotCfgPPO(BaseConfig):
         max_grad_norm = 1.
 
     class runner:
-        policy_class_name = 'ActorCritic'
+        policy_class_name = 'ritic'
         algorithm_class_name = 'PPO'
         num_steps_per_env = 50 # per iteration
         max_iterations = 100000 # number of policy updates

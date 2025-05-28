@@ -83,6 +83,7 @@ class LeggedRobot(BaseTask):
         # return clipped obs, clipped states (None), rewards, dones and infos
         clip_obs = self.cfg.normalization.clip_observations
         self.obs_buf = torch.clip(self.obs_buf, -clip_obs, clip_obs)
+        # print('observation of agent 1: ', self.obs_buf[0])
         if self.privileged_obs_buf is not None:
             self.privileged_obs_buf = torch.clip(self.privileged_obs_buf, -clip_obs, clip_obs)
         
@@ -321,12 +322,22 @@ class LeggedRobot(BaseTask):
     def compute_observations(self):
         """ Computes observations
         """
+        is_debugging = True
+        is_debugging = False
+        if is_debugging:
+            print('Current Observation Includes:')
         self.obs_buf = torch.cat((self.projected_gravity,
                                   (self.dof_pos[:, :self.num_actuated_dof] - self.default_dof_pos[:,
                                                                              :self.num_actuated_dof]) * self.obs_scales.dof_pos,
                                   self.dof_vel[:, :self.num_actuated_dof] * self.obs_scales.dof_vel,
                                   self.actions
                                   ), dim=-1)
+        if not self.cfg.env.observe_command:
+            if is_debugging:
+                print('self.projected_gravity',self.projected_gravity.shape)
+                print('(self.dof_pos[:, :self.num_actuated_dof] - self.default_dof_pos[:,:self.num_actuated_dof]) * self.obs_scales.dof_pos',((self.dof_pos[:, :self.num_actuated_dof] - self.default_dof_pos[:,:self.num_actuated_dof]) * self.obs_scales.dof_pos).shape)
+                print('self.dof_vel[:, :self.num_actuated_dof] * self.obs_scales.dof_vel',(self.dof_vel[:, :self.num_actuated_dof] * self.obs_scales.dof_vel).shape)
+                print('self.actions',self.actions.shape)
         # if self.cfg.env.observe_command and not self.cfg.env.observe_height_command:
         #     self.obs_buf = torch.cat((self.projected_gravity,
         #                               self.commands[:, :3] * self.commands_scale,
@@ -343,18 +354,33 @@ class LeggedRobot(BaseTask):
                                       self.dof_vel[:, :self.num_actuated_dof] * self.obs_scales.dof_vel,
                                       self.actions
                                       ), dim=-1)
+            if is_debugging:
+                print('self.projected_gravity',self.projected_gravity.shape)
+                print('self.commands * self.commands_scale',(self.commands * self.commands_scale).shape)
+                print('self.commands_scales',self.commands_scale)
+                print('one command', self.commands[0,:])
+                print('(self.dof_pos[:, :self.num_actuated_dof] - self.default_dof_pos[:,:self.num_actuated_dof]) * self.obs_scales.dof_pos',((self.dof_pos[:, :self.num_actuated_dof] - self.default_dof_pos[:,:self.num_actuated_dof]) * self.obs_scales.dof_pos).shape)
+                print('self.dof_vel[:, :self.num_actuated_dof] * self.obs_scales.dof_vel',(self.dof_vel[:, :self.num_actuated_dof] * self.obs_scales.dof_vel).shape)
+                print('self.actions',self.actions.shape)
+            
 
         if self.cfg.env.observe_two_prev_actions:
             self.obs_buf = torch.cat((self.obs_buf,
                                       self.last_actions), dim=-1)
+            if is_debugging:
+                print('self.last_actions',self.last_actions.shape)
 
         if self.cfg.env.observe_timing_parameter:
             self.obs_buf = torch.cat((self.obs_buf,
                                       self.gait_indices.unsqueeze(1)), dim=-1)
+            if is_debugging:
+                print('self.gait_indices.unsqueeze(1)',self.gait_indices.unsqueeze(1).shape)
 
         if self.cfg.env.observe_clock_inputs:
             self.obs_buf = torch.cat((self.obs_buf,
                                       self.clock_inputs), dim=-1)
+            if is_debugging:    
+                print('self.clock_inputs',self.clock_inputs.shape)
 
         # if self.cfg.env.observe_desired_contact_states:
         #     self.obs_buf = torch.cat((self.obs_buf,
@@ -365,34 +391,49 @@ class LeggedRobot(BaseTask):
                 self.obs_buf = torch.cat((self.root_states[:self.num_envs, 7:10] * self.obs_scales.lin_vel,
                                           self.base_ang_vel * self.obs_scales.ang_vel,
                                           self.obs_buf), dim=-1)
+                if is_debugging:
+                    print('self.root_states[:self.num_envs, 7:10] * self.obs_scales.lin_vel',(self.root_states[:self.num_envs, 7:10] * self.obs_scales.lin_vel).shape)
+                    print('self.base_ang_vel * self.obs_scales.ang_vel',(self.base_ang_vel * self.obs_scales.ang_vel).shape)
             else:
                 self.obs_buf = torch.cat((self.base_lin_vel * self.obs_scales.lin_vel,
                                           self.base_ang_vel * self.obs_scales.ang_vel,
                                           self.obs_buf), dim=-1)
+                if is_debugging:
+                    print('self.base_lin_vel * self.obs_scales.lin_vel',(self.base_lin_vel * self.obs_scales.lin_vel).shape)
+                    print('self.base_ang_vel * self.obs_scales.ang_vel',(self.base_ang_vel * self.obs_scales.ang_vel).shape)
 
         if self.cfg.env.observe_only_ang_vel:
             self.obs_buf = torch.cat((self.base_ang_vel * self.obs_scales.ang_vel,
                                       self.obs_buf), dim=-1)
+            if is_debugging:
+                    print('self.base_ang_vel * self.obs_scales.ang_vel',(self.base_ang_vel * self.obs_scales.ang_vel).shape)
 
         if self.cfg.env.observe_only_lin_vel:
             self.obs_buf = torch.cat((self.base_lin_vel * self.obs_scales.lin_vel,
                                       self.obs_buf), dim=-1)
-
+            if is_debugging:
+                    print('self.base_lin_vel * self.obs_scales.lin_vel',(self.base_lin_vel * self.obs_scales.lin_vel).shape)
+        
         if self.cfg.env.observe_yaw:
             forward = quat_apply(self.base_quat, self.forward_vec)
             heading = torch.atan2(forward[:, 1], forward[:, 0]).unsqueeze(1)
             # heading_error = torch.clip(0.5 * wrap_to_pi(heading), -1., 1.).unsqueeze(1)
             self.obs_buf = torch.cat((self.obs_buf,
                                       heading), dim=-1)
+            if is_debugging:
+                    print('heading',heading.shape)
+
 
         if self.cfg.env.observe_contact_states:
-            self.obs_buf = torch.cat((self.obs_buf, (self.contact_forces[:, self.feet_indices, 2] > 1.).view(
-                self.num_envs,
-                -1) * 1.0), dim=1)
+            self.obs_buf = torch.cat((self.obs_buf, (self.contact_forces[:, self.feet_indices, 2] > 1.).view(self.num_envs,-1) * 1.0), dim=1)
+            if is_debugging:
+                    print('(self.contact_forces[:, self.feet_indices, 2] > 1.).view(self.num_envs,-1) * 1.0',((self.contact_forces[:, self.feet_indices, 2] > 1.).view(self.num_envs,-1) * 1.0).shape)
 
         # add noise if needed
         if self.add_noise:
             self.obs_buf += (2 * torch.rand_like(self.obs_buf) - 1) * self.noise_scale_vec
+            if is_debugging:
+                    print('(2 * torch.rand_like(self.obs_buf) - 1) * self.noise_scale_vec',((2 * torch.rand_like(self.obs_buf) - 1) * self.noise_scale_vec).shape)
 
         # build privileged obs
 
@@ -1322,7 +1363,7 @@ class LeggedRobot(BaseTask):
         if self.cfg.commands.gaitwise_curricula:
             # self.category_names = ['pronk', 'trot', 'pace', 'bound']
             self.category_names = ['trot']
-    
+
         if self.cfg.commands.curriculum_type == "RewardThresholdCurriculum":
             from .curriculum import RewardThresholdCurriculum
             CurriculumClass = RewardThresholdCurriculum

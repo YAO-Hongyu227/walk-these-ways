@@ -322,5 +322,27 @@ def config_q20(Cnfg: Union[Cfg, Meta]):
     # _.height_measurements = 0.1
     # # _.action = 0.0
 
+####################################################################### go1 observation scales ###############
+        # class obs_scales(PrefixProto, cli=False):
+    #     lin_vel = 2.0
+    #     ang_vel = 0.25
+    #     dof_pos = 1.0
+    #     dof_vel = 0.05
+    #     imu = 0.1
+    #     height_measurements = 5.0
+    #     friction_measurements = 1.0
+    #     body_height_cmd = 2.0
+    #     gait_phase_cmd = 1.0
+    #     gait_freq_cmd = 1.0
+    #     footswing_height_cmd = 0.15
+    #     body_pitch_cmd = 0.3
+    #     body_roll_cmd = 0.3
+    #     aux_reward_cmd = 1.0
+    #     compliance_cmd = 1.0
+    #     stance_width_cmd = 1.0
+    #     stance_length_cmd = 1.0
+    #     segmentation_image = 1.0
+    #     rgb_image = 1.0
+    #     depth_image = 1.0
 
 

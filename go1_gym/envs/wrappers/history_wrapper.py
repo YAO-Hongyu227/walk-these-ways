@@ -35,7 +35,8 @@ class HistoryWrapper(gym.Wrapper):
     def get_observations(self):
         obs = self.env.get_observations()
         # print("********************************************************************")
-        # print('self.obs.shape = ', obs.shape)   self.obs.shape =  torch.Size([4096, 76]), should be [4096,70]
+        # print('obs.shape = ', obs.shape)   #self.obs.shape =  torch.Size([4096, 76]), should be [4096,70]
+        # print('observation = ', obs)
         # print("********************************************************************")
         privileged_obs = self.env.get_privileged_observations()
         self.obs_history = torch.cat((self.obs_history[:, self.env.num_obs:], obs), dim=-1)

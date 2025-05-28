@@ -257,7 +257,7 @@ def train_go1(headless=True):
     for name, value in vars(Cfg.reward_scales).items():
       if float(value) is not 0.0:
         print(f"{name}: {value}")
-
+    
     env = VelocityTrackingEasyEnv(sim_device='cuda:0', headless=headless, cfg=Cfg)
 
     # log the experiment parameters
