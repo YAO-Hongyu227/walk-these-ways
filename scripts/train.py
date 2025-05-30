@@ -199,8 +199,8 @@ def train_go1(headless=True):
 
     Cfg.commands.footswing_height_range = [0.03 * amplified_scalar, 0.35 * amplified_scalar] 
     # Cfg.commands.body_pitch_range = [-0.4, 0.4]
-    Cfg.commands.body_pitch_range = [-0.0, 0.0]
-    Cfg.commands.body_roll_range = [-0.0, 0.0]
+    Cfg.commands.body_pitch_range = [-0.4, 0.4]
+    Cfg.commands.body_roll_range = [-0.4, 0.4]
     Cfg.commands.stance_width_range = [0.10 * amplified_scalar, 0.45 * amplified_scalar]  
     Cfg.commands.stance_length_range = [0.35 * amplified_scalar, 0.45 * amplified_scalar] 
 
@@ -217,7 +217,7 @@ def train_go1(headless=True):
 
     Cfg.commands.limit_footswing_height = [0.03 * amplified_scalar, 0.35 * amplified_scalar]
     Cfg.commands.limit_body_pitch = [-0.4, 0.4]
-    Cfg.commands.limit_body_roll = [-0.0, 0.0]
+    Cfg.commands.limit_body_roll = [-0.4, 0.4]
     # Cfg.commands.limit_stance_width = [0.10 * amplified_scalar, 0.45 * amplified_scalar]
     # Cfg.commands.limit_stance_length = [0.35 * amplified_scalar, 0.45 * amplified_scalar]
     Cfg.commands.limit_stance_width = [0.25 * amplified_scalar, 0.45 * amplified_scalar ]
@@ -273,7 +273,7 @@ def train_go1(headless=True):
     env = HistoryWrapper(env)
     gpu_id = 0
     runner = Runner(env, device=f"cuda:{gpu_id}",writer = writer,log_dir = log_dir)  # 传递writer给Runner 
-    runner.learn(num_learning_iterations=10000, init_at_random_ep_len=True, eval_freq=100)
+    runner.learn(num_learning_iterations=1000, init_at_random_ep_len=True, eval_freq=100)
 
     #关闭writer
     writer.close()
@@ -315,5 +315,5 @@ if __name__ == '__main__':
                 """, filename=".charts.yml", dedent=True)
 
     # to see the environment rendering, set headless=False
-    train_go1(headless=True)
-    # train_go1(headless=False)
+    # train_go1(headless=True)
+    train_go1(headless=False)

@@ -65,7 +65,6 @@ class LeggedRobot(BaseTask):
         """
         clip_actions = self.cfg.normalization.clip_actions
         self.actions = torch.clip(actions, -clip_actions, clip_actions).to(self.device)
-        # step physics and render each frame
         self.prev_base_pos = self.base_pos.clone()
         self.prev_base_quat = self.base_quat.clone()
         self.prev_base_lin_vel = self.base_lin_vel.clone()
@@ -985,6 +984,13 @@ class LeggedRobot(BaseTask):
             self.joint_pos_target = self.lag_buffer[0] + self.default_dof_pos
         else:
             self.joint_pos_target = actions_scaled + self.default_dof_pos
+        
+        # 保存 actions_scaled 到列表中
+        # if not hasattr(self, "logged_actions"):
+        #     self.logged_actions = []
+        # self.logged_actions.append(actions_scaled.clone().cpu().numpy())
+        
+        
 
         control_type = self.cfg.control.control_type
 
@@ -998,8 +1004,20 @@ class LeggedRobot(BaseTask):
             self.joint_vel_last_last = torch.clone(self.joint_vel_last)
             self.joint_vel_last = torch.clone(self.joint_vel)
         elif control_type == "P":
+            # print('*****************************************')
+            # print(self.p_gains)     150
+            # print(self.Kp_factors)  1
+            # print(self.motor_offsets)   0
+            # print(self.d_gains) 3
+            # print(self.dof_vel)
+            # print('')
             torques = self.p_gains * self.Kp_factors * (
                     self.joint_pos_target - self.dof_pos + self.motor_offsets) - self.d_gains * self.Kd_factors * self.dof_vel
+            
+            # 保存 torques 到列表中
+            if not hasattr(self, "logged_actions"):
+                self.logged_actions = []
+            self.logged_actions.append((self.joint_pos_target - self.dof_pos).clone().cpu().numpy())
         else:
             raise NameError(f"Unknown controller type: {control_type}")
 

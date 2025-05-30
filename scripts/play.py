@@ -85,6 +85,8 @@ def load_env(label, headless=False):
     env = VelocityTrackingEasyEnv(sim_device='cuda:0', headless=False, cfg=Cfg)
     env = HistoryWrapper(env)
 
+
+
     # load policy
     from ml_logger import logger
     from go1_gym_learn.ppo_cse.actor_critic import ActorCritic
@@ -101,12 +103,15 @@ def play_go1(headless=True):
     from go1_gym import MINI_GYM_ROOT_DIR
     import glob
     import os
+    from isaacgym import gymapi
 
-    label = "gait-conditioned-agility/2025-05-20/train"
+
+    # label = "gait-conditioned-agility/2025-05-20/train"
+    label = "gait-conditioned-agility/2025-05-30/train"
 
     env, policy = load_env(label, headless=headless)
 
-    num_eval_steps = 1
+    num_eval_steps = 500*2
     gaits = {"pronking": [0, 0, 0],
              "trotting": [0.5, 0, 0],
              "bounding": [0, 0.5, 0],
@@ -127,18 +132,24 @@ def play_go1(headless=True):
 
     obs = env.reset()
 
+    saved_obs_list = []
 
+    sim_time_log = []
+    sim_time = 0.0  # 初始化时间戳
 
-    for key, value in obs.items():
-        value_np = value.detach().cpu().numpy()
-        shape = value_np.shape
-        print(f"\nKey: '{key}' | Shape: {shape}")
-        print("Values:", value_np.flatten()[:5], "...")
+    saved_actions = []
+
+    # for key, value in obs.items():
+    #     value_np = value.detach().cpu().numpy()
+    #     shape = value_np.shape
+    #     print(f"\nKey: '{key}' | Shape: {shape}")
+    #     print("Values:", value_np.flatten()[:5], "...")
 
 
     for i in tqdm(range(num_eval_steps)):
         with torch.no_grad():
             actions = policy(obs)
+            saved_actions.append(actions[0].detach().cpu().numpy().copy())  # [0] 是因为 actions shape 是 (1, 12)
             # print(actions)
         env.commands[:, 0] = x_vel_cmd
         env.commands[:, 1] = y_vel_cmd
@@ -153,6 +164,16 @@ def play_go1(headless=True):
         env.commands[:, 12] = stance_width_cmd
         obs, rew, done, info = env.step(actions)
 
+
+        sim_time_log.append(sim_time)
+        sim_time += env.dt  # env.dt = dt * decimation，正是控制间隔
+
+
+        obs_vec = obs['obs'].squeeze().cpu().numpy()
+        saved_obs_list.append(obs_vec.copy())
+
+        # print(obs)
+        # print(obs['obs'])
 
         def print_obs_structure(obs_dict, max_values=2100):
             for key, value in obs_dict.items():
@@ -181,6 +202,62 @@ def play_go1(headless=True):
         measured_x_vels[i] = env.base_lin_vel[0, 0]
         joint_positions[i] = env.dof_pos[0, :].cpu()
 
+    import matplotlib.pyplot as plt
+
+    # time_diffs = np.diff(sim_time_log)
+    # plt.plot(time_diffs)
+    # plt.title("Control Interval (s)")
+    # plt.xlabel("Control Step")
+    # plt.ylabel("Δt")
+    # plt.ylim(env.dt - 0.001, env.dt + 0.001)
+    # plt.grid(True)
+    # plt.tight_layout()
+    # plt.show()
+
+####################################################  打印12个关节角度  ##########################################################################
+    plot_joint_angles = False
+    if plot_joint_angles:
+        saved_actions = np.array(saved_actions)  # shape: [num_eval_steps, 12]
+        time_axis = np.linspace(0, num_eval_steps * env.dt, num_eval_steps)
+
+        joint_names = [
+            "FL_hip", "RL_hip", "FR_hip", "RR_hip",
+            "FL_thigh", "RL_thigh", "FR_thigh", "RR_thigh",
+            "FL_calf", "RL_calf", "FR_calf", "RR_calf"
+        ]
+
+        # 每个组单独画一个 4×1 子图
+        joint_groups = {
+            "hip": [0, 3, 6, 9],
+            "thigh": [1, 4, 7, 10],
+            "calf": [2, 5, 8, 11],
+        }
+
+        for group_name, indices in joint_groups.items():
+            fig, axs = plt.subplots(4, 1, figsize=(16, 10), sharex=True)  # 横向尺寸加倍
+            fig.suptitle(f"{group_name.capitalize()} Joint Actions Over Time", fontsize=16)
+            
+            for i, idx in enumerate(indices):
+                axs[i].plot(time_axis, saved_actions[:, idx], label=joint_names[idx], color='black')
+                axs[i].set_ylabel("Action")
+                axs[i].set_ylim([-4, 4])  # 固定 Y 轴
+                axs[i].set_title(joint_names[idx])
+                axs[i].grid(True)
+            
+            axs[-1].set_xlabel("Time (s)")
+            plt.tight_layout(rect=[0, 0, 1, 0.97])
+            plt.savefig(f"logs/{group_name}_joints_4x1_go1.png")
+            plt.show()
+
+
+##################################################################################################################################
+
+    os.makedirs("logs", exist_ok=True)
+    obs_array = np.stack(saved_obs_list, axis=0)
+    np.savetxt("logs/obs_go1.txt", obs_array, fmt="%.6f")
+    print(f"Saved {obs_array.shape[0]} obs vectors to logs/obs_go1.txt")
+
+
     # plot target and measured forward velocity
     from matplotlib import pyplot as plt
     fig, axs = plt.subplots(2, 1, figsize=(12, 5))
@@ -198,6 +275,71 @@ def play_go1(headless=True):
 
     plt.tight_layout()  
     plt.show()
+
+    plot_scaled_actions = True
+    if plot_scaled_actions:
+        logged_actions = np.array(env.logged_actions).reshape(-1, 12)
+        time_axis = np.linspace(0, len(logged_actions) * env.dt, len(logged_actions))
+
+        joint_names = [
+            "FL_hip", "RL_hip", "FR_hip", "RR_hip",
+            "FL_thigh", "RL_thigh", "FR_thigh", "RR_thigh",
+            "FL_calf", "RL_calf", "FR_calf", "RR_calf"
+        ]
+
+        # 每个组单独画一个 4×1 子图
+        joint_groups = {
+            "hip": [0, 3, 6, 9],
+            "thigh": [1, 4, 7, 10],
+            "calf": [2, 5, 8, 11],
+        }
+
+        for group_name, indices in joint_groups.items():
+            fig, axs = plt.subplots(4, 1, figsize=(16, 10), sharex=True)
+            fig.suptitle(f"{group_name.capitalize()} Joint Actions (Scaled) Over Time", fontsize=16)
+            
+            for i, idx in enumerate(indices):
+                axs[i].plot(time_axis, logged_actions[:, idx], label=joint_names[idx], color='black')
+                axs[i].set_ylabel("Action")
+                axs[i].set_ylim([-2, 2])
+                axs[i].set_title(joint_names[idx])
+                axs[i].grid(True)
+            
+            axs[-1].set_xlabel("Time (s)")
+            plt.tight_layout(rect=[0, 0, 1, 0.97])
+            plt.savefig(f"logs/{group_name}_logged_actions_4x1.png")
+            # plt.show()
+        
+        # 保存 logged_actions 为 txt 文件
+        os.makedirs("logs", exist_ok=True)
+        np.savetxt("logs/logged_actions_scaled.txt", logged_actions, fmt="%.6f")
+        print(f"Saved {logged_actions.shape[0]}×{logged_actions.shape[1]} actions to logs/logged_actions_scaled.txt")
+
+
+    from PIL import Image
+
+    # 图像文件路径
+    hip_img = Image.open("logs/hip_logged_actions_4x1.png")
+    thigh_img = Image.open("logs/thigh_logged_actions_4x1.png")
+    calf_img = Image.open("logs/calf_logged_actions_4x1.png")
+
+    # 获取最大高度，总宽度
+    total_width = hip_img.width + thigh_img.width + calf_img.width
+    max_height = max(hip_img.height, thigh_img.height, calf_img.height)
+
+    # 创建新图像用于拼接
+    combined_img = Image.new('RGB', (total_width, max_height), color=(255, 255, 255))
+
+    # 粘贴每张图
+    x_offset = 0
+    for img in [hip_img, thigh_img, calf_img]:
+        combined_img.paste(img, (x_offset, 0))
+        x_offset += img.width
+
+    # 保存最终图像
+    combined_img.save("logs/combined_joint_actions.png")
+    combined_img.show()
+
 
 
 if __name__ == '__main__':

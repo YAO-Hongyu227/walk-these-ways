@@ -9,27 +9,47 @@ def config_q20(Cnfg: Union[Cfg, Meta]):
     _ = Cnfg.init_state
 
     _.pos = [0.0, 0.0, 0.521]  # x,y,z [m]    0.521          #初始位置
-    _.default_joint_angles = {  # = target angles [rad] when action = 0.0
-        'FL_hip_joint': -0.25,  # [rad]
-        'RL_hip_joint': -0.25,  # [rad]
-        'FR_hip_joint': 0.25,  # [rad]
-        'RR_hip_joint': 0.25,  # [rad]
 
-        'FL_thigh_joint': -0.45,  # [rad]
-        'RL_thigh_joint': -0.9,  # [rad]
-        'FR_thigh_joint': -0.45,  # [rad]
-        'RR_thigh_joint': -0.9,  # [rad]            #不带符号，数字越小,大腿与身体的夹角越大
+    waiba = False
+    if waiba:
+        _.default_joint_angles = {  # = target angles [rad] when action = 0.0
+            'FL_hip_joint': -0.25,  # [rad]
+            'RL_hip_joint': -0.25,  # [rad]
+            'FR_hip_joint': 0.25,  # [rad]
+            'RR_hip_joint': 0.25,  # [rad]
 
-        'FL_calf_joint': 1.4,  # [rad]
-        'RL_calf_joint': 1.3,  # [rad]
-        'FR_calf_joint': 1.4,  # [rad]
-        'RR_calf_joint': 1.3  # [rad]
+            'FL_thigh_joint': -0.45,  # [rad]
+            'RL_thigh_joint': -0.9,  # [rad]
+            'FR_thigh_joint': -0.45,  # [rad]
+            'RR_thigh_joint': -0.9,  # [rad]            #不带符号，数字越小,大腿与身体的夹角越大
 
-        # 'FL_calf_joint': 1.5,  # [rad]
-        # 'RL_calf_joint': 1.5,  # [rad]
-        # 'FR_calf_joint': 1.5,  # [rad]
-        # 'RR_calf_joint': 1.5  # [rad]           #数字越小,小腿和大腿的夹角越大
-    }
+            'FL_calf_joint': 1.4,  # [rad]
+            'RL_calf_joint': 1.3,  # [rad]
+            'FR_calf_joint': 1.4,  # [rad]
+            'RR_calf_joint': 1.3  # [rad]
+
+            # 'FL_calf_joint': 1.5,  # [rad]
+            # 'RL_calf_joint': 1.5,  # [rad]
+            # 'FR_calf_joint': 1.5,  # [rad]
+            # 'RR_calf_joint': 1.5  # [rad]           #数字越小,小腿和大腿的夹角越大
+        }
+    else:
+        _.default_joint_angles = {  # = target angles [rad] when action = 0.0
+            'FL_hip_joint': 0.0,  # [rad]
+            'RL_hip_joint': 0.0,  # [rad]
+            'FR_hip_joint': 0.0,  # [rad]
+            'RR_hip_joint': 0.0,  # [rad]
+
+            'FL_thigh_joint': -0.8,  # [rad] # origin 0.8
+            'RL_thigh_joint': -1,  # [rad] # origin 1
+            'FR_thigh_joint': -0.8,  # [rad] # origin 0.8
+            'RR_thigh_joint': -1,  # [rad] # origin 1
+
+            'FL_calf_joint': 1.3,  # [rad]
+            'RL_calf_joint': 1.3,  # [rad]
+            'FR_calf_joint': 1.3,  # [rad]
+            'RR_calf_joint': 1.3   # [rad]
+        }
 
     _ = Cnfg.control
     _.control_type = 'P'
